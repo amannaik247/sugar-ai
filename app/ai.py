@@ -57,7 +57,7 @@ def extract_answer_from_output(outputs):
 class RAGAgent:
     """Retrieval-Augmented Generation agent for Sugar-AI"""
     
-    def __init__(self, model: str = "google/gemma-3-27b-it", quantize: bool = True):
+    def __init__(self, model: str = "google/gemma-3-27b-it", quantize: bool = False):
         # disable quantization if CUDA is not available
         self.use_quant = quantize and torch.cuda.is_available()
         self.model_name = model
@@ -235,11 +235,12 @@ class RAGAgent:
         except Exception as e:
             raise Exception(f"Error generating response with custom prompt: {str(e)}")
 
-    def _normalize_chat_messages(messages: list) -> list:
-    """Normalize messages to roles expected by Gemma chat template.
-    - Convert 'assistant' -> 'model'
-    - Merge first 'system' into first 'user' content
-    """
+    def _normalize_chat_messages(self, messages: list) -> list:
+        """
+        Normalize messages to roles expected by Gemma chat template.
+        - Convert 'assistant' -> 'model'
+        - Merge first 'system' into first 'user' content
+        """
         system_content = ""
         for msg in messages:
             if msg.get("role") == "system" and msg.get("content"):
@@ -266,7 +267,7 @@ class RAGAgent:
         return normalized
 
 
-    def _extract_after_prompt(full_text: str, prompt: str, eos_token: str = None) -> str:
+    def _extract_after_prompt(self, full_text: str, prompt: str, eos_token: str = None) -> str:
         """Return the model completion that comes after the prompt.
         Keeps logic minimal; optionally trims at eos token or first blank paragraph.
         """
@@ -297,7 +298,7 @@ class RAGAgent:
         """
 
         # Normalize messages and build prompt using tokenizer's chat template
-        chat = _normalize_chat_messages(messages)
+        chat = self._normalize_chat_messages(messages)
         full_prompt = self.tokenizer.apply_chat_template(
             chat,
             tokenize=False,
@@ -322,7 +323,7 @@ class RAGAgent:
             generated_text = response[0]['generated_text']
             
             # Extract only the new model response
-            answer = _extract_after_prompt(
+            answer = self._extract_after_prompt(
                 generated_text,
                 full_prompt,
                 getattr(self.tokenizer, "eos_token", None),
